@@ -1,0 +1,19 @@
+{
+  "id": "default",
+  "description": "Default settings",
+  "engineFactory": "org.example.vanilla.VanillaEngine",
+  "datasource": {
+    "params" : {
+      "appName": "NCF"
+    }
+  },
+  "algorithms": [
+    {
+      "name": "algo",
+      "params": {
+	"appName" : "NCF",
+	"eventName": "purchased-event"
+      }
+    }
+  ]
+}

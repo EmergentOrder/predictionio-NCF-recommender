@@ -25,8 +25,8 @@ from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.recommendation import ncf_common
-from official.recommendation import ncf_keras_main
+import ncf_common
+import ncf_keras_main
 from official.utils.flags import core
 
 FLAGS = flags.FLAGS

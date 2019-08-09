@@ -32,11 +32,11 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
-from official.recommendation import constants as rconst
-from official.recommendation import ncf_common
-from official.recommendation import ncf_input_pipeline
-from official.recommendation import neumf_model
+import movielens
+import constants as rconst
+import ncf_common
+import ncf_input_pipeline
+import neumf_model
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils

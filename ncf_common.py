@@ -29,10 +29,10 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
-from official.recommendation import constants as rconst
-from official.recommendation import data_pipeline
-from official.recommendation import data_preprocessing
+import movielens
+import constants as rconst
+import data_pipeline
+import data_preprocessing
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
@@ -43,8 +43,8 @@ FLAGS = flags.FLAGS
 
 def get_inputs(params):
   """Returns some parameters used by the model."""
-  if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
-    movielens.download(FLAGS.dataset, FLAGS.data_dir)
+  #if FLAGS.download_if_missing and not FLAGS.use_synthetic_data:
+  #  movielens.download(FLAGS.dataset, FLAGS.data_dir)
 
   if FLAGS.seed is not None:
     np.random.seed(FLAGS.seed)
@@ -157,7 +157,7 @@ def get_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(export_dir=False, run_eagerly=True)
+  flags_core.define_base(export_dir=False, run_eagerly=False)
   flags_core.define_performance(
       num_parallel_calls=False,
       inter_op=False,
@@ -177,8 +177,8 @@ def define_ncf_flags():
   flags_core.set_defaults(
       model_dir="/tmp/ncf/",
       data_dir="/tmp/movielens-data/",
-      train_epochs=2,
-      batch_size=256,
+      train_epochs=100,
+      batch_size=1024,
       hooks="ProfilerHook",
       tpu=None
   )

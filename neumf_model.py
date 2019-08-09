@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018, 2019 The TensorFlow Authors, Alexander Merritt. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,10 +38,10 @@ import sys
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-from official.datasets import movielens  # pylint: disable=g-bad-import-order
-from official.recommendation import constants as rconst
-from official.recommendation import ncf_common
-from official.recommendation import stat_utils
+import movielens  # pylint: disable=g-bad-import-order
+import constants as rconst
+import ncf_common
+import stat_utils
 from official.utils.logs import mlperf_helper
 
 
@@ -74,7 +74,7 @@ def neumf_model_fn(features, labels, mode, params):
   """Model Function for NeuMF estimator."""
   if params.get("use_seed"):
     tf.set_random_seed(stat_utils.random_int32())
-
+ 
   users = features[movielens.USER_COLUMN]
   items = features[movielens.ITEM_COLUMN]
 
@@ -82,6 +82,7 @@ def neumf_model_fn(features, labels, mode, params):
   item_input = tf.keras.layers.Input(tensor=items)
   logits = construct_model(user_input, item_input, params).output
 
+  predicted_classes = tf.argmax(logits, 1)
   # Softmax with the first column of zeros is equivalent to sigmoid.
   softmax_logits = ncf_common.convert_to_softmax_logits(logits)
 
@@ -143,8 +144,18 @@ def neumf_model_fn(features, labels, mode, params):
 
     return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
-  else:
-    raise NotImplementedError
+  else: #default to predict mode, was not implemented 
+    predictions = {
+        'class_ids': predicted_classes[:, tf.newaxis],
+        'probabilities': softmax_logits,
+        'logits': logits,
+    }
+    #output = tf.estimator.export.PredictOutput(tf.placeholder(dtype=tf.float32, shape=[1000]))
+    return tf.estimator.EstimatorSpec(
+      mode=tf.estimator.ModeKeys.PREDICT,
+      predictions=predictions
+      #export_outputs={"serving_default": output}
+    )
 
 
 def _strip_first_and_last_dimension(x, batch_size):

@@ -27,10 +27,10 @@ import numpy as np
 import scipy.stats
 import tensorflow as tf
 
-from official.datasets import movielens
-from official.recommendation import constants as rconst
-from official.recommendation import data_preprocessing
-from official.recommendation import popen_helper
+import movielens
+import constants as rconst
+import data_preprocessing
+import popen_helper
 from official.utils.misc import keras_utils
 
 

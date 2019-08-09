@@ -25,12 +25,12 @@ import mock
 import numpy as np
 import tensorflow as tf
 
-from official.recommendation import constants as rconst
-from official.recommendation import data_pipeline
-from official.recommendation import neumf_model
-from official.recommendation import ncf_common
-from official.recommendation import ncf_estimator_main
-from official.recommendation import ncf_keras_main
+import constants as rconst
+import data_pipeline
+import neumf_model
+import ncf_common
+import ncf_estimator_main
+import ncf_keras_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 

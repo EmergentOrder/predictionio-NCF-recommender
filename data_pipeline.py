@@ -35,10 +35,10 @@ from six.moves import queue
 import tensorflow as tf
 from absl import logging
 
-from official.datasets import movielens
-from official.recommendation import constants as rconst
-from official.recommendation import popen_helper
-from official.recommendation import stat_utils
+import movielens
+import constants as rconst
+import popen_helper
+import stat_utils
 
 
 SUMMARY_TEMPLATE = """General:

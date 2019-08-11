@@ -39,22 +39,35 @@ from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.datasets import movielens
-from official.recommendation import constants as rconst
-from official.recommendation import data_pipeline
-from official.recommendation import data_preprocessing
-from official.recommendation import ncf_common
-from official.recommendation import neumf_model
+import movielens
+import constants as rconst
+import data_pipeline
+import data_preprocessing
+import ncf_common
+import neumf_model
 from official.utils.flags import core as flags_core
 from official.utils.logs import hooks_helper
 from official.utils.logs import logger
 from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
+import tf2onnx
+
+from tensorflow.graph_util import convert_variables_to_constants as freeze_graph
+from tf2onnx.tfonnx import process_tf_graph, tf_optimize
+
+from pathlib import Path
+import loader 
+
+import sys
+
+orig_sys_args = sys.argv
+sys.argv = sys.argv[:1]
+tf.compat.v1.disable_eager_execution()
+
 
 
 FLAGS = flags.FLAGS
-
 
 def construct_estimator(model_dir, params):
   """Construct either an Estimator or TPUEstimator for NCF.
@@ -174,16 +187,62 @@ def run_ncf(_):
         "Iteration {}: HR = {:.4f}, NDCG = {:.4f}, Loss = {:.4f}".format(
             cycle_index + 1, hr, ndcg, loss))
 
+
     # If some evaluation threshold is met
     if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
       target_reached = True
       break
+
+  def serving_input_fn():
+      x = tf.placeholder(dtype=tf.int64, shape=[1000], name=movielens.USER_COLUMN)
+      y = tf.placeholder(dtype=tf.int64, shape=[1000], name=movielens.ITEM_COLUMN)
+      mask = tf.placeholder(dtype=tf.float32, shape=[1000], name="duplicate_mask")
+
+      inputs = {movielens.USER_COLUMN: x, movielens.ITEM_COLUMN: y, "duplicate_mask": mask}
+
+      return tf.estimator.export.ServingInputReceiver(inputs, inputs)
+
+
+  saved_model_dir = "saved_model"
+  estimator.export_saved_model(saved_model_dir, serving_input_fn)
+  print("saved")
+  subdirs = [x for x in Path(saved_model_dir).iterdir()
+          if x.is_dir() and 'temp' not in str(x)]
+  latest = str(sorted(subdirs)[-1])
+
+  with tf.Session() as sess_tf:
+      loaded = tf.saved_model.loader.load(sess_tf, [tf.saved_model.tag_constants.SERVING], latest)
+
+      graph = loaded.graph_def
+      output_name = "concat:0"
+      tf.import_graph_def(graph, name='')
+      print("loaded")
+
+      for n in graph.node:
+          print('\n',n) 
+      frozen_graph = loader.freeze_session(sess_tf, output_names=[output_name])
+
+  tf.reset_default_graph()
+  with tf.Session() as sess_tf:
+
+      tf.import_graph_def(frozen_graph, name='')
+
+      print(type(frozen_graph))
+
+      onnx_graph = process_tf_graph(sess_tf.graph, opset=7, input_names=["userid:0", "itemid:0"], output_names=[output_name])
+      model_proto = onnx_graph.make_model("ncf")
+      onnx_model_string = model_proto.SerializeToString()
+
+      onnx_model_bytes = bytearray(onnx_model_string)
+      movielens.run_pio_workflow(onnx_model_bytes, movielens.user_map, movielens.item_map, orig_sys_args)
+
 
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_STOP,
                           value={"success": target_reached})
   producer.stop_loop()
   producer.join()
 
+  
   # Clear the session explicitly to avoid session delete error
   tf.keras.backend.clear_session()
   mlperf_helper.ncf_print(key=mlperf_helper.TAGS.RUN_FINAL)

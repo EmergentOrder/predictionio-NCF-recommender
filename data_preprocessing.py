@@ -31,17 +31,10 @@ import tensorflow as tf
 from absl import logging
 # pylint: enable=wrong-import-order
 
-from official.datasets import movielens
-from official.recommendation import constants as rconst
-from official.recommendation import data_pipeline
+import movielens
+import constants as rconst
+import data_pipeline
 from official.utils.logs import mlperf_helper
-
-
-DATASET_TO_NUM_USERS_AND_ITEMS = {
-    "ml-1m": (6040, 3706),
-    "ml-20m": (138493, 26744)
-}
-
 
 _EXPECTED_CACHE_KEYS = (
     rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY, rconst.EVAL_USER_KEY,
@@ -201,12 +194,14 @@ def instantiate_pipeline(dataset,
   logging.info("Beginning data preprocessing.")
 
   st = timeit.default_timer()
-  raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
-  cache_path = os.path.join(data_dir, dataset, rconst.RAW_CACHE_FILE)
+  #raw_rating_path = os.path.join(data_dir, dataset, movielens.RATINGS_FILE)
+  #cache_path = os.path.join(data_dir, dataset, rconst.RAW_CACHE_FILE)
 
-  raw_data, _ = _filter_index_sort(raw_rating_path, cache_path)
-  user_map, item_map = raw_data["user_map"], raw_data["item_map"]
-  num_users, num_items = DATASET_TO_NUM_USERS_AND_ITEMS[dataset]
+  #raw_data, _ = _filter_index_sort(raw_rating_path, cache_path)
+  #user_map, item_map = raw_data["user_map"], raw_data["item_map"]
+  user_map = movielens.user_map
+  item_map = movielens.item_map
+  num_users, num_items = movielens.DATASET_TO_NUM_USERS_AND_ITEMS[dataset]
 
   if num_users != len(user_map):
     raise ValueError("Expected to find {} users, but found {}".format(
@@ -221,13 +216,13 @@ def instantiate_pipeline(dataset,
       num_items=num_items,
       user_map=user_map,
       item_map=item_map,
-      train_pos_users=raw_data[rconst.TRAIN_USER_KEY],
-      train_pos_items=raw_data[rconst.TRAIN_ITEM_KEY],
+      train_pos_users=np.array(movielens.ratings['userIdMapped']),
+      train_pos_items=np.array(movielens.ratings['itemIdMapped']),
       train_batch_size=params["batch_size"],
       batches_per_train_step=params["batches_per_step"],
       num_train_negatives=params["num_neg"],
-      eval_pos_users=raw_data[rconst.EVAL_USER_KEY],
-      eval_pos_items=raw_data[rconst.EVAL_ITEM_KEY],
+      eval_pos_users=np.array(movielens.ratings['userIdMapped']),
+      eval_pos_items=np.array(movielens.ratings['itemIdMapped']),
       eval_batch_size=params["eval_batch_size"],
       batches_per_eval_step=params["batches_per_step"],
       stream_files=params["stream_files"],

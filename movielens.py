@@ -66,12 +66,14 @@ item_id['itemIdMapped'] = np.arange(len(item_id))
 ratings = pd.merge(ratings, item_id, on=['itemid'], how='left')
 ratings = ratings[['userIdMapped', 'itemIdMapped', 'userid', 'itemid', 'rating', 'timestamp']]
 
-#print(ratings)
 user_id_dict = user_id.to_dict()['userIdMapped']
 item_id_dict = item_id.to_dict()['itemIdMapped']
 user_map = {int(v):int(user_id_dict[k]) for k,v in user_id.to_dict()['userid'].items()}
 item_map = {int(v):int(item_id_dict[k]) for k,v in item_id.to_dict()['itemid'].items()}
-#print(user_map)
+
+DATASET_TO_NUM_USERS_AND_ITEMS = {
+    "ml-1m": (len(user_map), len(item_map))
+}
 
 #training_dataset = (
 #    tf.data.Dataset.from_tensor_slices(

@@ -46,7 +46,7 @@ class Algorithm(val ap: AlgorithmParams)
     val eventName = ap.eventName
     val appName = ap.appName
 
-    val timeout = 500
+    val timeout = 1000
     def recentEvents(queryEntityId: Option[String], queryTargetEntityId: Option[Option[String]]): Seq[Event] = try {
       LEventStore.find(
         appName = appName,

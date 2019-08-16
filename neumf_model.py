@@ -113,7 +113,7 @@ def neumf_model_fn(features, labels, mode, params):
     global_step = tf.train.get_global_step()
     learning_rate = tf.train.exponential_decay(
         params["learning_rate"], global_step=global_step,
-        decay_steps=100, decay_rate=1.30)
+        decay_steps=100, decay_rate=1.11)
     #print("LR: " + str(learning_rate))
 
     optimizer = tf.compat.v1.train.AdamOptimizer(

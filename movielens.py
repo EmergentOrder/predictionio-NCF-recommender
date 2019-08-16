@@ -50,6 +50,11 @@ p_event_store = PEventStore(spark._jsparkSession, sqlContext)
 event_df = p_event_store.find(app_name, entity_type='user', target_entity_type='item', event_names=event_names)
 ratings = event_df.toPandas().rename(index=str, columns={'entityId': 'userid', 'targetEntityId': 'itemid', 'eventTime': 'timestamp'})
 
+#For running with eval only, drop dupe user-item interactions and users with < 2 interactions
+
+ratings = ratings.drop_duplicates(subset=["userid", "itemid"], keep="last")
+ratings = ratings[ratings.duplicated(subset=['userid'], keep=False)]
+
 ratings['rating'] = 1
 
 ratings['userid'] = pd.to_numeric(ratings['userid'].str[5:]).astype(int)
@@ -65,6 +70,7 @@ item_id['itemIdMapped'] = np.arange(len(item_id))
 
 ratings = pd.merge(ratings, item_id, on=['itemid'], how='left')
 ratings = ratings[['userIdMapped', 'itemIdMapped', 'userid', 'itemid', 'rating', 'timestamp']]
+
 
 user_id_dict = user_id.to_dict()['userIdMapped']
 item_id_dict = item_id.to_dict()['itemIdMapped']

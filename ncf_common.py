@@ -177,7 +177,7 @@ def define_ncf_flags():
   flags_core.set_defaults(
       model_dir="/tmp/ncf/",
       data_dir="/tmp/movielens-data/",
-      train_epochs=1,
+      train_epochs=100,
       batch_size=1024,
       hooks="ProfilerHook",
       tpu=None
@@ -231,7 +231,7 @@ def define_ncf_flags():
           "The Number of negative instances to pair with a positive instance."))
 
   flags.DEFINE_float(
-      name="learning_rate", default=0.001,
+      name="learning_rate", default=1e-4,
       help=flags_core.help_wrap("The learning rate."))
 
   flags.DEFINE_float(
@@ -328,7 +328,7 @@ def define_ncf_flags():
 
   flags.DEFINE_bool(
       name="early_stopping",
-      default=False,
+      default=True,
       help=flags_core.help_wrap(
           "If True, we stop the training when it reaches hr_threshold"))
 

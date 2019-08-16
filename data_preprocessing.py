@@ -210,19 +210,35 @@ def instantiate_pipeline(dataset,
     raise ValueError("Expected to find {} items, but found {}".format(
         num_items, len(item_map)))
 
+  grouped_ratings = movielens.ratings.sort_values(by='timestamp').groupby('userIdMapped')
+
+  #When training use all the data here
+  train_users_items = grouped_ratings.apply(lambda x: x.head(len(x))).reset_index(drop=True).sort_values(by='userIdMapped')
+
+  #print(train_users_items)
+
+  train_users = train_users_items['userIdMapped'] #train_users_items['userIdMapped']
+  train_items = train_users_items['itemIdMapped'] #train_users_items['itemIdMapped']
+
+
+  eval_users_items = grouped_ratings.tail(1).sort_values(by='userIdMapped')
+  eval_users = eval_users_items['userIdMapped'] #eval_users_items['userIdMapped']
+  eval_items = eval_users_items['itemIdMapped'] #eval_users_items['itemIdMapped']
+  #print(eval_users_items)
+
   producer = data_pipeline.get_constructor(constructor_type or "materialized")(
       maximum_number_epochs=params["train_epochs"],
       num_users=num_users,
       num_items=num_items,
       user_map=user_map,
       item_map=item_map,
-      train_pos_users=np.array(movielens.ratings['userIdMapped']),
-      train_pos_items=np.array(movielens.ratings['itemIdMapped']),
+      train_pos_users=np.array(train_users),
+      train_pos_items=np.array(train_items),
       train_batch_size=params["batch_size"],
       batches_per_train_step=params["batches_per_step"],
       num_train_negatives=params["num_neg"],
-      eval_pos_users=np.array(movielens.ratings['userIdMapped']),
-      eval_pos_items=np.array(movielens.ratings['itemIdMapped']),
+      eval_pos_users=np.array(eval_users),
+      eval_pos_items=np.array(eval_items),
       eval_batch_size=params["eval_batch_size"],
       batches_per_eval_step=params["batches_per_step"],
       stream_files=params["stream_files"],

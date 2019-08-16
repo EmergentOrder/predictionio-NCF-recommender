@@ -110,9 +110,14 @@ def neumf_model_fn(features, labels, mode, params):
     mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
                             value=params["epsilon"])
 
+    global_step = tf.train.get_global_step()
+    learning_rate = tf.train.exponential_decay(
+        params["learning_rate"], global_step=global_step,
+        decay_steps=100, decay_rate=1.30)
+    #print("LR: " + str(learning_rate))
 
     optimizer = tf.compat.v1.train.AdamOptimizer(
-        learning_rate=params["learning_rate"],
+        learning_rate=learning_rate,
         beta1=params["beta1"],
         beta2=params["beta2"],
         epsilon=params["epsilon"])

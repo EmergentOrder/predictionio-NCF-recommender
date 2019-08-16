@@ -213,7 +213,7 @@ def instantiate_pipeline(dataset,
   grouped_ratings = movielens.ratings.sort_values(by='timestamp').groupby('userIdMapped')
 
   #When training use all the data here
-  train_users_items = grouped_ratings.apply(lambda x: x.head(len(x))).reset_index(drop=True).sort_values(by='userIdMapped')
+  train_users_items = grouped_ratings.apply(lambda x: x.head(len(x)-1)).reset_index(drop=True).sort_values(by='userIdMapped')
 
   #print(train_users_items)
 

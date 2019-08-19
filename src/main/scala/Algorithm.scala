@@ -31,6 +31,8 @@ class Algorithm(val ap: AlgorithmParams)
 
   @transient lazy val logger = Logger[this.type]
 
+  val runtime = new DefaultRuntime {}
+
   override
   def train(sc: SparkContext, data: PreparedData): Model = {
 
@@ -46,7 +48,9 @@ class Algorithm(val ap: AlgorithmParams)
     val eventName = ap.eventName
     val appName = ap.appName
 
-    val timeout = 10000
+    val ncf = new NCFZIO(model.model, model.userIdMap, model.itemIdMap)
+
+    val timeout = 15000
     def recentEvents(queryEntityId: Option[String], queryTargetEntityId: Option[Option[String]]): Seq[Event] = try {
       LEventStore.find(
         appName = appName,
@@ -70,13 +74,16 @@ class Algorithm(val ap: AlgorithmParams)
 
     def inputsItemToUserQuery(itemId: Int) = {
       val numTargets = model.userIdMap.size
-
+      //TODO: async
       val recentItemInteractedUsers = recentEvents(None, Some(Some("Event-" + itemId.toString))).map(x => x.entityId)
         .map(x => x.substring(5).toLong)
 
       val reverseUserIdMap = for ((k,v) <- model.userIdMap) yield (v, k)
       val rawCandidates = (0 until numTargets).toArray.map(x => reverseUserIdMap(x.toLong))
+      //To subsample 
       //val rawCandidates = Seq.fill(numCandidates)(Random.nextInt(numTargets)).toArray.map(x => reverseUserIdMap(x.toLong))
+
+      //TODO: move filtering to the end, to avoid varying shapes
       val filteredCandidates = (rawCandidates diff recentItemInteractedUsers).distinct
 
       val candidates = (filteredCandidates, Array(filteredCandidates.size)) 
@@ -128,26 +135,22 @@ class Algorithm(val ap: AlgorithmParams)
       }
     } 
 
-    def program = (new NCFZIO(model.model, model.userIdMap, model.itemIdMap)).fullNCF(userInput, itemInput)
-
-    val runtime = new DefaultRuntime {}
+    def program = ncf.fullNCF(userInput, itemInput)
 
     val before = System.nanoTime
     val output = runtime.unsafeRun(program)
     val after = System.nanoTime
 
+//    println("TIME " + (after-before))
     val targetOutputs = output._1.grouped(2).map(x => x(1)).toArray
       .zip(candidates._1)
 
-
-
-
-    val sortedOutputs = targetOutputs.sortBy(_._1).reverse.map(x => TargetScore(target = x._2,  
+    val sortedOutputs = targetOutputs.sortBy(_._1).reverse.take(query.num)
+    val softmaxedSortedOutputs = sortedOutputs.map(x => TargetScore(target = x._2,
       score = scala.math.exp(x._1)/(scala.math.exp(x._1) + 1)) //Apply softmax to a single logit
-    ).take(query.num)
+    )
 
-    //println(model.model(0) + " " + model.model(1) + " " + model.model(2))
-    PredictedResult(targetScores = sortedOutputs)
+    PredictedResult(targetScores = softmaxedSortedOutputs)
   }
 }
 

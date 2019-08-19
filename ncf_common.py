@@ -177,7 +177,7 @@ def define_ncf_flags():
   flags_core.set_defaults(
       model_dir="/tmp/ncf/",
       data_dir="/tmp/movielens-data/",
-      train_epochs=100,
+      train_epochs=1,
       batch_size=1024,
       hooks="ProfilerHook",
       tpu=None
@@ -207,7 +207,7 @@ def define_ncf_flags():
 
   # Set the default as a list of strings to be consistent with input arguments
   flags.DEFINE_list(
-      name="layers", default=["16", "32", "16", "8"],
+      name="layers", default=["16", "8", "4", "2"],
       help=flags_core.help_wrap(
           "The sizes of hidden layers for MLP. Example "
           "to specify different sizes of MLP layers: --layers=32,16,8,4"))
@@ -231,7 +231,7 @@ def define_ncf_flags():
           "The Number of negative instances to pair with a positive instance."))
 
   flags.DEFINE_float(
-      name="learning_rate", default=1e-4,
+      name="learning_rate", default=1e-5,
       help=flags_core.help_wrap("The learning rate."))
 
   flags.DEFINE_float(

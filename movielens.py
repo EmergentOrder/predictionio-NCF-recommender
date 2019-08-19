@@ -20,7 +20,7 @@ RATING_COLUMN = "rating"
 
 SparkContext._ensure_initialized()
 
-spark = SparkSession.builder.getOrCreate()
+spark = SparkSession.builder.master("local[*]").getOrCreate()
 
 sc = spark.sparkContext
 sql = spark.sql

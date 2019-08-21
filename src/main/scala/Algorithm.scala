@@ -19,7 +19,8 @@ import scala.reflect.io.Streamable
 
 import zio.Task
 import zio.DefaultRuntime
-import org.emergentorder.onnxZIO.NCFZIO
+import org.emergentorder.onnxZIO._
+import org.emergentorder.onnx._
 import org.emergentorder.onnx.TensorFactory
 import org.emergentorder.onnx.XInt
 
@@ -49,6 +50,10 @@ class Algorithm(val ap: AlgorithmParams)
     val appName = ap.appName
 
     val ncf = new NCFZIO(model.model, model.userIdMap, model.itemIdMap)
+
+    val onnxHelper = new ONNXHelper(model.model)
+    val SigmoidZIO = new ONNXNGraphHandlers(onnxHelper)
+    val TopKZIO = new ONNXNGraphHandlers(onnxHelper)
 
     val timeout = 15000
     def recentEvents(queryEntityId: Option[String], queryTargetEntityId: Option[Option[String]]): Seq[Event] = try {
@@ -145,10 +150,24 @@ class Algorithm(val ap: AlgorithmParams)
     val targetOutputs = output._1.grouped(2).map(x => x(1)).toArray
       .zip(candidates._1)
 
+    //TODO: Use ONNX-Scala topK here when implemented
+    //val targetOutputsTensor = TensorFactory.getTensor(targetOutputs.map(x => x._1), Array(targetOutputs.size))
+    //val topkZIO = TopKZIO.TopK10ZIO("topk", X = Some(targetOutputsTensor), K = TensorFactory.getTensor(query.num, Array(1)))
+
+    //val (values_ref, indices_ref) = runtime.unsafeRun(topkZIO)
+    //val sortedOutputsTensor = indices_ref._1 collect targetOutputs
+
     val sortedOutputs = targetOutputs.sortBy(_._1).reverse.take(query.num)
-    val softmaxedSortedOutputs = sortedOutputs.map(x => TargetScore(target = x._2,
-      score = scala.math.exp(x._1)/(scala.math.exp(x._1) + 1)) //Apply softmax to a single logit
-    )
+
+    val sortedOutputsTensor = TensorFactory.getTensor(sortedOutputs.map(x => x._1), Array(sortedOutputs.size))
+
+    val sigmoidZIO = SigmoidZIO.Sigmoid6ZIO[Float]("sigmoid", X = Some(sortedOutputsTensor))
+    val sigmoidedOutputs = runtime.unsafeRun(sigmoidZIO)
+
+    val softmaxedSortedOutputs = sigmoidedOutputs._1.zip(sortedOutputs.map(x => x._2))
+      .map(x => TargetScore(target = x._2,
+        score = x._1)
+      )
 
     PredictedResult(targetScores = softmaxedSortedOutputs)
   }

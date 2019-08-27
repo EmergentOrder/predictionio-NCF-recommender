@@ -192,11 +192,11 @@ def run_ncf(_):
     if model_helpers.past_stop_threshold(FLAGS.hr_threshold, hr):
       target_reached = True
       break
-
+  #May be better with shape 1, this is the floor of the input at predict time
   def serving_input_fn():
-      x = tf.placeholder(dtype=tf.int64, shape=[1000], name=movielens.USER_COLUMN)
-      y = tf.placeholder(dtype=tf.int64, shape=[1000], name=movielens.ITEM_COLUMN)
-      mask = tf.placeholder(dtype=tf.float32, shape=[1000], name="duplicate_mask")
+      x = tf.placeholder(dtype=tf.int64, shape=[1], name=movielens.USER_COLUMN)
+      y = tf.placeholder(dtype=tf.int64, shape=[1], name=movielens.ITEM_COLUMN)
+      mask = tf.placeholder(dtype=tf.float32, shape=[1], name="duplicate_mask")
 
       inputs = {movielens.USER_COLUMN: x, movielens.ITEM_COLUMN: y, "duplicate_mask": mask}
 
@@ -233,6 +233,9 @@ def run_ncf(_):
       model_proto = onnx_graph.make_model("ncf")
       onnx_model_string = model_proto.SerializeToString()
 
+      #out_file = open("newNCF.onnx", "wb")
+      #out_file.write(onnx_model_string)
+      #out_file.close()
       onnx_model_bytes = bytearray(onnx_model_string)
       movielens.run_pio_workflow(onnx_model_bytes, movielens.user_map, movielens.item_map, orig_sys_args)
 

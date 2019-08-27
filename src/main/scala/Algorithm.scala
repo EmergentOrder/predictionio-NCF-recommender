@@ -17,10 +17,15 @@ import collection.JavaConverters._
 import scala.io.Source
 import scala.reflect.io.Streamable
 
+import org.bytedeco.javacpp.PointerScope
+import org.bytedeco.javacpp.Pointer
+
+import zio.UIO
 import zio.Task
 import zio.DefaultRuntime
 import org.emergentorder.onnxZIO._
 import org.emergentorder.onnx._
+import org.emergentorder.onnx.backends._
 import org.emergentorder.onnx.TensorFactory
 import org.emergentorder.onnx.XInt
 
@@ -51,9 +56,8 @@ class Algorithm(val ap: AlgorithmParams)
 
     val ncf = new NCFZIO(model.model, model.userIdMap, model.itemIdMap)
 
-    val onnxHelper = new ONNXHelper(model.model)
-    val SigmoidZIO = new ONNXNGraphHandlers(onnxHelper)
-    val TopKZIO = new ONNXNGraphHandlers(onnxHelper)
+    //val SigmoidZIO = new ONNXNGraphHandlers(onnxHelper)
+    //val TopK = new NGraphBackend(onnxHelper)
 
     val timeout = 15000
     def recentEvents(queryEntityId: Option[String], queryTargetEntityId: Option[Option[String]]): Seq[Event] = try {
@@ -97,7 +101,6 @@ class Algorithm(val ap: AlgorithmParams)
         (Array.fill[Long](filteredCandidates.size)(itemId), Array(filteredCandidates.size))
        }
 
-
       val userInput = Task{
         candidates
       }
@@ -124,8 +127,6 @@ class Algorithm(val ap: AlgorithmParams)
         TensorFactory.getTensor(Array.fill[Long](filteredCandidates.size)(userId), inputSize)
        }
 
-
-
       val itemInput = Task{
         candidates
       }
@@ -140,10 +141,12 @@ class Algorithm(val ap: AlgorithmParams)
       }
     } 
 
-    def program = ncf.fullNCF(userInput, itemInput)
+    val finalizer = UIO.effectTotal(ncf.close)
+    def program = ncf.fullNCF(userInput, itemInput).ensuring(finalizer)
 
     val before = System.nanoTime
     val output = runtime.unsafeRun(program)
+  
     val after = System.nanoTime
 
 //    println("TIME " + (after-before))
@@ -152,24 +155,34 @@ class Algorithm(val ap: AlgorithmParams)
 
     //TODO: Use ONNX-Scala topK here when implemented
     //val targetOutputsTensor = TensorFactory.getTensor(targetOutputs.map(x => x._1), Array(targetOutputs.size))
-    //val topkZIO = TopKZIO.TopK10ZIO("topk", X = Some(targetOutputsTensor), K = TensorFactory.getTensor(query.num, Array(1)))
+    //val topk = TopK.TopK1[Float, Long]("topk", k = Some(1), X = Some(targetOutputsTensor))
 
-    //val (values_ref, indices_ref) = runtime.unsafeRun(topkZIO)
+//    val (values_ref, indices_ref) = runtime.unsafeRun(topkZIO)
     //val sortedOutputsTensor = indices_ref._1 collect targetOutputs
 
     val sortedOutputs = targetOutputs.sortBy(_._1).reverse.take(query.num)
 
-    val sortedOutputsTensor = TensorFactory.getTensor(sortedOutputs.map(x => x._1), Array(sortedOutputs.size))
+    //val sortedOutputsTensor = TensorFactory.getTensor(sortedOutputs.map(x => x._1), Array(sortedOutputs.size))
 
-    val sigmoidZIO = SigmoidZIO.Sigmoid6ZIO[Float]("sigmoid", X = Some(sortedOutputsTensor))
-    val sigmoidedOutputs = runtime.unsafeRun(sigmoidZIO)
+    //TODO: Use sigmoidZIO here
+    //val sigmoidZIO = SigmoidZIO.Sigmoid6ZIO[Float]("sigmoid", X = Some(sortedOutputsTensor))
+    //val sigmoidedOutputs = runtime.unsafeRun(sigmoidZIO)
 
-    val softmaxedSortedOutputs = sigmoidedOutputs._1.zip(sortedOutputs.map(x => x._2))
-      .map(x => TargetScore(target = x._2,
-        score = x._1)
-      )
+  //  val softmaxedSortedOutputs = sigmoidedOutputs._1.zip(sortedOutputs.map(x => x._2))
+  //    .map(x => TargetScore(target = x._2,
+  //      score = x._1)
+  //    )
 
-    PredictedResult(targetScores = softmaxedSortedOutputs)
+    val softmaxedSortedOutputs = sortedOutputs.map(x => TargetScore(target = x._2,
+      score = scala.math.exp(x._1)/(scala.math.exp(x._1) + 1)) //Apply softmax to a single logit
+    )
+
+    //println(Pointer.totalBytes)
+    //println(Pointer.maxPhysicalBytes)
+    //println(Pointer.physicalBytes)
+    //println(Pointer.maxBytes)
+    
+    PredictedResult(targetScores = softmaxedSortedOutputs) 
   }
 }
 

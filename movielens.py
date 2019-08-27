@@ -61,6 +61,7 @@ ratings['userid'] = pd.to_numeric(ratings['userid'].str[5:]).astype(int)
 ratings['itemid'] = pd.to_numeric(ratings['itemid'].str[6:]).astype(int)
 ratings['timestamp'] = pd.to_numeric(ratings['timestamp'])
 
+#TODO: Hashing trick here instead of dicts
 user_id = ratings[['userid']].drop_duplicates().reindex()
 user_id['userIdMapped'] = np.arange(len(user_id))
 
